@@ -36,7 +36,7 @@ def query_messages_from_table_message(con: Connection, key_remote_jid: str, cont
                 END AS text,
                 m.message_type
             FROM message AS m
-            LEFT JOIN chat_view AS cv ON m.chat_row_id = cv._id
+            LEFT JOIN (SELECT chat._id AS _id, jjid.raw_string AS raw_string_jid FROM chat LEFT JOIN jid AS jjid ON chat.jid_row_id = jjid._id) AS cv ON m.chat_row_id = cv._id
             LEFT JOIN jid ON m.sender_jid_row_id = jid._id
             LEFT JOIN message_revoked AS mr ON m._id = mr.message_row_id
             WHERE cv.raw_string_jid =:key_remote_jid
@@ -60,7 +60,7 @@ def query_all_chats(db_path: str, contacts: Dict[str, Optional[str]]) -> List[Ch
     table_messages_exists = cur.fetchone() is not None
     print("[+] Using table 'messages'") if table_messages_exists else print("[+] Using table 'message'")
 
-    query = "SELECT raw_string_jid as key_remote_jid, subject, sort_timestamp FROM chat_view WHERE sort_timestamp IS NOT NULL ORDER BY sort_timestamp DESC"
+    query = "SELECT jid.raw_string AS key_remote_jid, subject AS subject, sort_timestamp AS sort_timestamp FROM chat LEFT JOIN jid ON chat.jid_row_id = jid._id WHERE sort_timestamp IS NOT NULL ORDER BY sort_timestamp DESC"
     for key_remote_jid, subject, sort_timestamp in cur.execute(query):
         if table_messages_exists:
             messages = query_messages_from_table_messages(con, key_remote_jid, contacts)
